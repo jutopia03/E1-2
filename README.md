@@ -101,3 +101,14 @@ E1-2/
 
 ## Git 저장소 복제 실습
 - 별도 디렉터리(`E1-2-clone`)에 저장소를 `clone`하여 이 내용을 추가한 뒤 `commit` → `push`하고, 기존 작업 디렉터리(`E1-2`)에서 `pull`로 변경사항을 반영했습니다.
+
+## 제출용 스크린샷
+| 개발 환경 (VSCode, Python, Git 설정) | clone / pull 실습 |
+|---|---|
+| ![env](docs/screenshots/env.png) | ![clone-pull](docs/screenshots/git-clone-pull.png) |
+
+**Git 커밋 이력 (`git log --oneline --graph`)**
+
+![git log graph](docs/screenshots/git-log-graph.png)
+
+> 위 이력은 clone/pull 실습까지 완료한 시점의 캡처이며, 이후 이 스크린샷들을 추가하는 커밋 1개가 더 있습니다.
