@@ -1,7 +1,14 @@
-"""퀴즈 게임 전체 흐름(메뉴 표시, 입력 처리, 기능 실행)을 관리하는 모듈."""
+"""퀴즈 게임 전체 흐름(메뉴 표시, 입력 처리, 기능 실행, 저장/불러오기)을 관리하는 모듈."""
+
+import json
+from pathlib import Path
+
 from default_quizzes import create_default_quizzes
+from quiz import Quiz
 
 LINE = "=" * 40
+# 실행 위치(현재 폴더)와 상관없이 항상 이 파일이 있는 폴더(프로젝트 루트)의 state.json을 사용한다.
+STATE_FILE = Path(__file__).resolve().parent / "state.json"
 
 
 class QuizGame:
@@ -11,20 +18,29 @@ class QuizGame:
 
     def __init__(self):
         self.quizzes = create_default_quizzes()  # Quiz 객체들의 리스트
+        self.best_score = None    # 최고 점수 (100점 만점 환산). 아직 안 풀었으면 None
+        self.best_correct = None  # 최고 점수를 냈을 때 맞힌 문제 수
+        self.best_total = None    # 최고 점수를 냈을 때 푼 문제 수
 
+    # ------------------------------------------------------------------
+    # 메인 루프 / 메뉴
+    # ------------------------------------------------------------------
     def run(self):
         """프로그램의 메인 루프. '종료'를 고르거나 입력이 중단될 때까지 반복한다."""
+        self.load_state()
         try:
             while True:
                 self.show_menu()
                 choice = self.read_number("선택: ", 1, len(self.MENU_ITEMS))
                 if choice == len(self.MENU_ITEMS):
+                    self.save_state()
                     print("👋 게임을 종료합니다.")
                     break
                 self.handle_choice(choice)
         except (KeyboardInterrupt, EOFError):
             # Ctrl+C(KeyboardInterrupt) 또는 입력 스트림 종료(EOFError) 시 비정상 종료 방지
-            print("\n\n⚠️ 입력이 중단되어 프로그램을 안전하게 종료합니다.")
+            print("\n\n⚠️ 입력이 중단되었습니다. 데이터를 저장하고 안전하게 종료합니다.")
+            self.save_state()
 
     def show_menu(self):
         """메뉴 화면을 출력한다."""
@@ -47,6 +63,9 @@ class QuizGame:
         elif choice == 4:
             print("\n🚧 점수 확인 기능은 준비 중입니다.")
 
+    # ------------------------------------------------------------------
+    # 입력 처리
+    # ------------------------------------------------------------------
     def read_number(self, prompt, min_value, max_value):
         """min_value~max_value 범위의 정수를 입력받을 때까지 반복해서 묻는다."""
         error_message = f"⚠️ 잘못된 입력입니다. {min_value}-{max_value} 사이의 숫자를 입력하세요."
@@ -64,3 +83,74 @@ class QuizGame:
                 print(error_message)
                 continue
             return number
+
+    # ------------------------------------------------------------------
+    # 파일 저장 / 불러오기 (state.json)
+    # ------------------------------------------------------------------
+    def load_state(self):
+        """state.json에서 퀴즈와 최고 점수를 불러온다. 없거나 손상됐으면 기본 데이터를 사용한다."""
+        if not STATE_FILE.exists():
+            print("📂 저장된 데이터가 없어 기본 퀴즈로 시작합니다.")
+            return
+
+        try:
+            with open(STATE_FILE, "r", encoding="utf-8") as file:
+                data = json.load(file)
+            quizzes = [Quiz.from_dict(item) for item in data["quizzes"]]
+            best_score, best_correct, best_total = self._parse_best(data)
+        except (ValueError, KeyError, TypeError):
+            # ValueError: JSON 문법 오류(JSONDecodeError), 인코딩 오류, Quiz.from_dict 검증 실패
+            # KeyError: "quizzes" 키가 없음 / TypeError: 최상위가 dict가 아니거나 quizzes가 리스트가 아님
+            print("⚠️ 저장 파일이 손상되어 기본 퀴즈 데이터로 복구합니다.")
+            self._reset_to_default()
+            self.save_state()
+            return
+        except OSError:
+            # 권한 문제 등으로 파일을 열 수 없는 경우
+            print("⚠️ 저장 파일을 읽을 수 없어 기본 퀴즈로 시작합니다.")
+            return
+
+        self.quizzes = quizzes
+        self.best_score = best_score
+        self.best_correct = best_correct
+        self.best_total = best_total
+        score_text = "기록 없음" if best_score is None else f"{best_score}점"
+        print(f"📂 저장된 데이터를 불러왔습니다. (퀴즈 {len(quizzes)}개, 최고점수 {score_text})")
+
+    def save_state(self):
+        """현재 퀴즈 목록과 최고 점수를 state.json에 저장한다. 성공하면 True."""
+        data = {
+            "quizzes": [quiz.to_dict() for quiz in self.quizzes],
+            "best_score": self.best_score,
+            "best_correct": self.best_correct,
+            "best_total": self.best_total,
+        }
+        try:
+            with open(STATE_FILE, "w", encoding="utf-8") as file:
+                # ensure_ascii=False: 한글을 \uXXXX가 아닌 그대로 저장 / indent=4: 사람이 읽기 쉽게
+                json.dump(data, file, ensure_ascii=False, indent=4)
+        except OSError:
+            print("⚠️ 데이터를 저장하지 못했습니다.")
+            return False
+        return True
+
+    def _parse_best(self, data):
+        """최고 점수 관련 값 3개를 꺼내 검증한다. 형식이 잘못되면 ValueError."""
+        best_score = data.get("best_score")
+        best_correct = data.get("best_correct")
+        best_total = data.get("best_total")
+        if best_score is None:  # 아직 한 번도 안 푼 상태
+            return None, None, None
+        values = (best_score, best_correct, best_total)
+        if any(isinstance(v, bool) or not isinstance(v, int) for v in values):
+            raise ValueError("최고 점수 데이터는 정수여야 합니다.")
+        if not (0 <= best_score <= 100 and 0 <= best_correct <= best_total and best_total >= 1):
+            raise ValueError("최고 점수 데이터의 범위가 올바르지 않습니다.")
+        return best_score, best_correct, best_total
+
+    def _reset_to_default(self):
+        """퀴즈와 점수를 기본 상태로 되돌린다."""
+        self.quizzes = create_default_quizzes()
+        self.best_score = None
+        self.best_correct = None
+        self.best_total = None

@@ -26,3 +26,33 @@ class Quiz:
     def is_correct(self, user_answer):
         """사용자가 고른 번호가 정답이면 True, 아니면 False를 반환한다."""
         return user_answer == self.answer
+    def to_dict(self):
+        """JSON으로 저장할 수 있도록 dict 형태로 변환한다."""
+        return {
+            "question": self.question,
+            "choices": self.choices,
+            "answer": self.answer,
+        }
+
+    @classmethod
+    def from_dict(cls, data):
+        """dict(JSON에서 읽은 값)로부터 Quiz 객체를 만든다. 형식이 잘못되면 ValueError."""
+        if not isinstance(data, dict):
+            raise ValueError("퀴즈 데이터가 dict 형식이 아닙니다.")
+        question = data.get("question")
+        choices = data.get("choices")
+        answer = data.get("answer")
+
+        if not isinstance(question, str) or question.strip() == "":
+            raise ValueError("문제(question)가 올바르지 않습니다.")
+        if (
+            not isinstance(choices, list)
+            or len(choices) != cls.CHOICE_COUNT
+            or not all(isinstance(c, str) and c.strip() for c in choices)
+        ):
+            raise ValueError("선택지(choices)는 비어 있지 않은 문자열 4개여야 합니다.")
+        # bool은 int의 하위 타입이라 True가 1로 통과하지 않도록 따로 막는다.
+        if isinstance(answer, bool) or not isinstance(answer, int) or not 1 <= answer <= cls.CHOICE_COUNT:
+            raise ValueError("정답(answer)은 1~4 사이의 정수여야 합니다.")
+
+        return cls(question, choices, answer)
