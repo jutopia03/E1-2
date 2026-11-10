@@ -61,7 +61,7 @@ class QuizGame:
         elif choice == 3:
             self.show_quiz_list()
         elif choice == 4:
-            print("\n🚧 점수 확인 기능은 준비 중입니다.")
+            self.show_best_score()
 
     # ------------------------------------------------------------------
     # 퀴즈 풀기
@@ -93,19 +93,44 @@ class QuizGame:
                 print(f"❌ 오답입니다. 정답은 {quiz.answer}번 ({answer_text}) 입니다.")
 
         score = self.calculate_score(correct, total)
-        self.show_result(correct, total, score)
+        is_new_best = self.update_best_score(correct, total, score)
+        self.show_result(correct, total, score, is_new_best)
         return correct, total, score
 
     def calculate_score(self, correct, total):
         """맞힌 수를 100점 만점 점수로 환산한다. (소수점 이하 버림)"""
         return correct * 100 // total
 
-    def show_result(self, correct, total, score):
+    def show_result(self, correct, total, score, is_new_best):
         """퀴즈 결과를 출력한다."""
         print()
         print(LINE)
         print(f"🏆 결과: {total}문제 중 {correct}문제 정답! ({score}점)")
+        if is_new_best:
+            print("🎉 새로운 최고 점수입니다!")
+        else:
+            print(f"📌 현재 최고 점수: {self.best_score}점")
         print(LINE)
+
+    # ------------------------------------------------------------------
+    # 점수 확인
+    # ------------------------------------------------------------------
+    def update_best_score(self, correct, total, score):
+        """이번 점수가 최고 점수보다 높으면 갱신하고 저장한다. 갱신했으면 True."""
+        if self.best_score is not None and score <= self.best_score:
+            return False
+        self.best_score = score
+        self.best_correct = correct
+        self.best_total = total
+        self.save_state()
+        return True
+
+    def show_best_score(self):
+        """저장된 최고 점수를 출력한다."""
+        if self.best_score is None:
+            print("\n📭 아직 퀴즈를 푼 기록이 없습니다. 먼저 퀴즈를 풀어 보세요!")
+            return
+        print(f"\n🏆 최고 점수: {self.best_score}점 ({self.best_total}문제 중 {self.best_correct}문제 정답)")
     # ------------------------------------------------------------------
     # 퀴즈 추가
     # ------------------------------------------------------------------
