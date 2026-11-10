@@ -14,7 +14,7 @@ STATE_FILE = Path(__file__).resolve().parent / "state.json"
 class QuizGame:
     """메뉴를 보여주고, 사용자의 선택에 따라 각 기능을 실행하는 클래스."""
 
-    MENU_ITEMS = ("퀴즈 풀기", "퀴즈 추가", "퀴즈 목록", "점수 확인", "종료")
+    MENU_ITEMS = ("퀴즈 풀기", "퀴즈 추가", "퀴즈 목록", "점수 확인", "퀴즈 삭제", "종료")
 
     def __init__(self):
         self.quizzes = create_default_quizzes()  # Quiz 객체들의 리스트
@@ -62,6 +62,8 @@ class QuizGame:
             self.show_quiz_list()
         elif choice == 4:
             self.show_best_score()
+        elif choice == 5:
+            self.delete_quiz()
 
     # ------------------------------------------------------------------
     # 퀴즈 풀기
@@ -167,6 +169,31 @@ class QuizGame:
         for number, quiz in enumerate(self.quizzes, start=1):
             print(f"[{number}] {quiz.question}")
         print("-" * 40)
+    # ------------------------------------------------------------------
+    # 퀴즈 삭제 (보너스)
+    # ------------------------------------------------------------------
+    def delete_quiz(self):
+        """목록에서 번호를 골라 퀴즈를 삭제하고 파일에 반영한다."""
+        if not self.quizzes:
+            print("\n📭 삭제할 퀴즈가 없습니다.")
+            return
+        self.show_quiz_list()
+        count = len(self.quizzes)
+        number = self.read_number(f"삭제할 퀴즈 번호 (1-{count}, 취소: 0): ", 0, count)
+        if number == 0:
+            print("↩️ 삭제를 취소했습니다.")
+            return
+
+        target = self.quizzes[number - 1]
+        print(f"\n선택한 퀴즈: {target.question}")
+        confirm = self.read_number("정말 삭제할까요? (1: 예, 2: 아니오): ", 1, 2)
+        if confirm == 2:
+            print("↩️ 삭제를 취소했습니다.")
+            return
+
+        self.quizzes.pop(number - 1)
+        self.save_state()
+        print(f"🗑️ 퀴즈를 삭제했습니다. (남은 퀴즈 {len(self.quizzes)}개)")
     # ------------------------------------------------------------------
     # 입력 처리
     # ------------------------------------------------------------------
