@@ -1,6 +1,7 @@
 """퀴즈 게임 전체 흐름(메뉴 표시, 입력 처리, 기능 실행, 저장/불러오기)을 관리하는 모듈."""
-import random
+
 import json
+import random
 from pathlib import Path
 
 from default_quizzes import create_default_quizzes
@@ -14,13 +15,20 @@ STATE_FILE = Path(__file__).resolve().parent / "state.json"
 class QuizGame:
     """메뉴를 보여주고, 사용자의 선택에 따라 각 기능을 실행하는 클래스."""
 
-    MENU_ITEMS = ("퀴즈 풀기", "퀴즈 추가", "퀴즈 목록", "점수 확인", "퀴즈 삭제", "종료")
-
     def __init__(self):
         self.quizzes = create_default_quizzes()  # Quiz 객체들의 리스트
         self.best_score = None    # 최고 점수 (100점 만점 환산). 아직 안 풀었으면 None
         self.best_correct = None  # 최고 점수를 냈을 때 맞힌 문제 수
         self.best_total = None    # 최고 점수를 냈을 때 푼 문제 수
+        # (메뉴 이름, 실행할 메서드) 목록. 메뉴 번호는 이 목록의 순서(1부터)로 정해지고,
+        # '종료'는 항상 마지막 번호로 자동으로 붙는다.
+        self.menu_actions = [
+            ("퀴즈 풀기", self.play_quiz),
+            ("퀴즈 추가", self.add_quiz),
+            ("퀴즈 목록", self.show_quiz_list),
+            ("점수 확인", self.show_best_score),
+            ("퀴즈 삭제", self.delete_quiz),
+        ]
 
     # ------------------------------------------------------------------
     # 메인 루프 / 메뉴
@@ -28,11 +36,12 @@ class QuizGame:
     def run(self):
         """프로그램의 메인 루프. '종료'를 고르거나 입력이 중단될 때까지 반복한다."""
         self.load_state()
+        exit_number = len(self.menu_actions) + 1
         try:
             while True:
                 self.show_menu()
-                choice = self.read_number("선택: ", 1, len(self.MENU_ITEMS))
-                if choice == len(self.MENU_ITEMS):
+                choice = self.read_number("선택: ", 1, exit_number)
+                if choice == exit_number:
                     self.save_state()
                     print("👋 게임을 종료합니다.")
                     break
@@ -48,33 +57,26 @@ class QuizGame:
         print(LINE)
         print("        🎯 나만의 퀴즈 게임 🎯")
         print(LINE)
-        for number, item in enumerate(self.MENU_ITEMS, start=1):
-            print(f"{number}. {item}")
+        for number, (name, _action) in enumerate(self.menu_actions, start=1):
+            print(f"{number}. {name}")
+        print(f"{len(self.menu_actions) + 1}. 종료")
         print(LINE)
 
     def handle_choice(self, choice):
-        """선택한 메뉴 번호에 맞는 기능을 실행한다."""
-        if choice == 1:
-            self.play_quiz()
-        elif choice == 2:
-            self.add_quiz()
-        elif choice == 3:
-            self.show_quiz_list()
-        elif choice == 4:
-            self.show_best_score()
-        elif choice == 5:
-            self.delete_quiz()
+        """선택한 메뉴 번호에 연결된 메서드를 실행한다."""
+        _name, action = self.menu_actions[choice - 1]
+        action()
 
     # ------------------------------------------------------------------
     # 퀴즈 풀기
     # ------------------------------------------------------------------
     def play_quiz(self):
-        """저장된 퀴즈를 차례로 출제하고 결과를 보여준다. 결과 (맞힌 수, 푼 수, 점수)를 반환한다."""
+        """퀴즈를 출제하고, 결과를 보여준 뒤 최고 점수를 갱신한다."""
         if not self.quizzes:
             print("\n📭 등록된 퀴즈가 없습니다. 먼저 퀴즈를 추가해 주세요.")
-            return None
+            return
 
-                # 보너스: 풀 문제 수 선택 + 랜덤 출제
+        # 보너스: 풀 문제 수 선택 + 랜덤 출제
         count = self.read_number(f"몇 문제를 풀까요? (1-{len(self.quizzes)}): ", 1, len(self.quizzes))
         # random.sample: 원본 리스트는 그대로 두고, 무작위 순서로 count개를 뽑은 '새 리스트'를 만든다.
         selected = random.sample(self.quizzes, count)
@@ -97,7 +99,6 @@ class QuizGame:
         score = self.calculate_score(correct, total)
         is_new_best = self.update_best_score(correct, total, score)
         self.show_result(correct, total, score, is_new_best)
-        return correct, total, score
 
     def calculate_score(self, correct, total):
         """맞힌 수를 100점 만점 점수로 환산한다. (소수점 이하 버림)"""
@@ -133,6 +134,7 @@ class QuizGame:
             print("\n📭 아직 퀴즈를 푼 기록이 없습니다. 먼저 퀴즈를 풀어 보세요!")
             return
         print(f"\n🏆 최고 점수: {self.best_score}점 ({self.best_total}문제 중 {self.best_correct}문제 정답)")
+
     # ------------------------------------------------------------------
     # 퀴즈 추가
     # ------------------------------------------------------------------
@@ -156,6 +158,7 @@ class QuizGame:
             print("\n✅ 퀴즈가 추가되었습니다! (저장 완료)")
         else:
             print("\n✅ 퀴즈가 추가되었습니다. (파일 저장은 실패해 이번 실행 중에만 유지됩니다)")
+
     # ------------------------------------------------------------------
     # 퀴즈 목록
     # ------------------------------------------------------------------
@@ -169,6 +172,7 @@ class QuizGame:
         for number, quiz in enumerate(self.quizzes, start=1):
             print(f"[{number}] {quiz.question}")
         print("-" * 40)
+
     # ------------------------------------------------------------------
     # 퀴즈 삭제 (보너스)
     # ------------------------------------------------------------------
@@ -194,6 +198,7 @@ class QuizGame:
         self.quizzes.pop(number - 1)
         self.save_state()
         print(f"🗑️ 퀴즈를 삭제했습니다. (남은 퀴즈 {len(self.quizzes)}개)")
+
     # ------------------------------------------------------------------
     # 입력 처리
     # ------------------------------------------------------------------
@@ -214,6 +219,7 @@ class QuizGame:
                 print(error_message)
                 continue
             return number
+
     def read_text(self, prompt):
         """비어 있지 않은 문자열을 입력받을 때까지 반복해서 묻는다. 앞뒤 공백은 제거한다."""
         while True:
