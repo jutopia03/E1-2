@@ -1,5 +1,5 @@
 """퀴즈 게임 전체 흐름(메뉴 표시, 입력 처리, 기능 실행, 저장/불러오기)을 관리하는 모듈."""
-
+import random
 import json
 from pathlib import Path
 
@@ -72,7 +72,10 @@ class QuizGame:
             print("\n📭 등록된 퀴즈가 없습니다. 먼저 퀴즈를 추가해 주세요.")
             return None
 
-        selected = self.quizzes
+                # 보너스: 풀 문제 수 선택 + 랜덤 출제
+        count = self.read_number(f"몇 문제를 풀까요? (1-{len(self.quizzes)}): ", 1, len(self.quizzes))
+        # random.sample: 원본 리스트는 그대로 두고, 무작위 순서로 count개를 뽑은 '새 리스트'를 만든다.
+        selected = random.sample(self.quizzes, count)
         total = len(selected)
         print(f"\n📝 퀴즈를 시작합니다! (총 {total}문제)")
 
