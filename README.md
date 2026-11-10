@@ -98,3 +98,6 @@ E1-2/
 | 퀴즈 추가 | 퀴즈 목록 | 점수 확인 |
 |---|---|---|
 | ![add](docs/screenshots/add_quiz.png) | ![list](docs/screenshots/list.png) | ![score](docs/screenshots/score.png) |
+
+## Git 저장소 복제 실습
+- 별도 디렉터리(`E1-2-clone`)에 저장소를 `clone`하여 이 내용을 추가한 뒤 `commit` → `push`하고, 기존 작업 디렉터리(`E1-2`)에서 `pull`로 변경사항을 반영했습니다.
