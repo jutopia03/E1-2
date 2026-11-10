@@ -1,4 +1,5 @@
 """퀴즈 게임 전체 흐름(메뉴 표시, 입력 처리, 기능 실행)을 관리하는 모듈."""
+from default_quizzes import create_default_quizzes
 
 LINE = "=" * 40
 
@@ -7,6 +8,9 @@ class QuizGame:
     """메뉴를 보여주고, 사용자의 선택에 따라 각 기능을 실행하는 클래스."""
 
     MENU_ITEMS = ("퀴즈 풀기", "퀴즈 추가", "퀴즈 목록", "점수 확인", "종료")
+
+    def __init__(self):
+        self.quizzes = create_default_quizzes()  # Quiz 객체들의 리스트
 
     def run(self):
         """프로그램의 메인 루프. '종료'를 고르거나 입력이 중단될 때까지 반복한다."""
